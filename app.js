@@ -1,34 +1,37 @@
 const express = require('express');
 const app = express();
+const dotenv = require('dotenv');
 const mongoose = require('mongoose');
-
+const Listing = require("./models/listings.js");
 const path = require('path');
 const {urlencoded} = require("express");
 const methodOverride = require("method-override");
 const engine = require('ejs-mate')
 const session = require('express-session');
+const MongoStore = require('connect-mongo');
 const flash = require('connect-flash');
 const ExpressError = require("./utlis/ExpressError.js");
 const passport = require('passport');
 const LocalStrategy = require('passport-local');
 const User = require('./models/user.js');
-
+dotenv.config();
 const listingRoute = require('./routes/listingroutes.js');
 const reviewRoute = require('./routes/reviewroutes.js');
 const userRoute = require('./routes/userroutes.js');
 
-const PORT = 8080 || 8000;
+const PORT = process.env.PORT || 8000;
+const db_url = process.env.ATLAS_URL;
 
 //Connecting to Database
 let DbConnect = async () => {
-    await mongoose.connect('mongodb://localhost:27017/HotelFinder');
+    await mongoose.connect(db_url);
 };
 
 app.listen(PORT, () => {
-    console.log(`http://localhost:${PORT}/listing`);
+    console.log(`http://localhost:${PORT}`);
 
     DbConnect().then(() => {
-        console.log('mongodb://localhost:27017/HotelFinder');
+        console.log(db_url);
     }).catch((err) => {
         console.log(err);
     })
@@ -44,9 +47,24 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 app.use(methodOverride("_method"));
 
+
+//MongoSession
+const store = MongoStore.create({
+    mongoUrl: db_url,
+    crypto: {
+        secret: process.env.SESSION_SECRET,
+    },
+    touchAfter: 24 * 60 * 60,
+});
+
+store.on('error', (err) => {
+    res.send(err);
+})
+
 //Sessions
 app.use(session({
-    secret: 'emkdmedmemwekomwd474445.u4383=c4hrf',
+    store,
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: true,
     cookie: {
@@ -55,6 +73,7 @@ app.use(session({
         httpOnly: true,
     }
 }));
+
 
 //Passport initialization
 app.use(passport.initialize());
@@ -72,16 +91,14 @@ app.use((req, res, next) => {
     next();
 });
 
-
 app.get('/', (req, res) => {
-    res.send('I am root.')
+    res.redirect('/listing');
 })
 
 
 app.use('/listing', listingRoute);
 app.use('/listing/:id', reviewRoute);
 app.use('/', userRoute);
-
 
 
 app.all('*', (req, res,next) => {
