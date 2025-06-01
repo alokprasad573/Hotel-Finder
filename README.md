@@ -1,4 +1,4 @@
-# Hotel Finder Application
+# Airbnb Clone
 
 A full-stack web application for finding and managing hotel listings with user authentication and reviews.
 
